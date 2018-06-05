@@ -17,7 +17,7 @@
 #'
 #' @name RcppRoll
 #' @docType package
-#' @useDynLib RcppRoll
-#' @seealso \code{\link{rollit}} for 'roll'-ing your own custom functions.
+#' @useDynLib RcppRoll, .registration = TRUE
+#' @importFrom Rcpp evalCpp
 NULL
 

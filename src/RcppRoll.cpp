@@ -105,7 +105,7 @@ T roll_vector_with(Callable f,
     n = weights.size();
 
   if (normalize && weights.size())
-    weights = weights / sum(weights) * n;
+    weights = Rcpp::clone(NumericVector(weights / sum(weights) * n));
 
   return fill.filled() ?
     roll_vector_with_fill(f, x, n, weights, by, fill, partial, align) :
@@ -124,9 +124,8 @@ T roll_vector_with_fill(Callable f,
                    bool partial,
                    String const& align) {
 
-  if (x.size() < n) {
+  if (x.size() < n)
     return rep(T::get_na(), x.size());
-  }
 
   // figure out if we need to pad at the start, end, etc.
   int padLeftTimes  = getLeftPadding(fill, align, n);
@@ -137,65 +136,66 @@ T roll_vector_with_fill(Callable f,
   int output_n = padLeftTimes + ops_n + padRightTimes;
 
   T result;
-  if (by > 1) {
+  int i = 0;
+
+  if (by == 1) {
     result = static_cast<T>(no_init(output_n));
   } else {
     result = T(output_n, fill.middle());
   }
 
-  // pad left
-  for (int i = 0; i < padLeftTimes; ++i) {
+  // Pad left
+  for (; i < padLeftTimes; ++i)
     result[i] = fill.left();
-  }
 
-  // fill result
+  // Fill result -- we hoist the indexing variable outside of the loop
+  // so we can re-use it to easily figure out where our 'fill-right'
+  // pass-through should start
   if (weights.size()) {
-    for (int i = padLeftTimes; i < padLeftTimes + ops_n; i += by) {
+    for (; i < padLeftTimes + ops_n; i += by) {
       result[i] = f(x, i - padLeftTimes, weights, n);
     }
   } else {
-    for (int i = padLeftTimes; i < padLeftTimes + ops_n; i += by) {
+    for (; i < padLeftTimes + ops_n; i += by) {
       result[i] = f(x, i - padLeftTimes, n);
     }
   }
 
-  // pad right
-  for (int i = padLeftTimes + ops_n; i < padLeftTimes + ops_n + padRightTimes; ++i) {
+  // Fill-right on the remainders. We move the index
+  // back one 'by' iteration, then move it back one.
+  i -= by;
+  ++i;
+  for (; i < output_n; ++i)
     result[i] = fill.right();
-  }
 
   return result;
 }
 
 template <typename Callable, typename T>
 T roll_vector_with_nofill(Callable f,
-                   T const& x,
-                   int n,
-                   NumericVector& weights,
-                   int by,
-                   Fill const& fill,
-                   bool partial,
-                   String const& align) {
+                          T const& x,
+                          int n,
+                          NumericVector& weights,
+                          int by,
+                          Fill const& fill,
+                          bool partial,
+                          String const& align) {
 
   int x_n = x.size();
-  int ops_n = x_n - n + 1;
-  int output_n = ops_n;
+  int output_n = (x_n - n) / by + 1;
 
-  T result;
-  if (by > 1) {
-    result = static_cast<T>(no_init(output_n));
-  } else {
-    result = T(output_n, fill.middle());
-  }
+  T result = static_cast<T>(no_init(output_n));
 
-  // fill result
+  int index = 0;
   if (weights.size()) {
-    for (int i = 0; i < ops_n; i += by) {
-      result[i] = f(x, i, weights, n);
+    for (int i = 0; i < output_n; ++i) {
+      result[i] = f(x, index, weights, n);
+      index += by;
     }
   } else {
-    for (int i = 0; i < ops_n; i += by) {
-      result[i] = f(x, i, n);
+    for (int i = 0; i < output_n; ++i) {
+      result[i] = f(x, index, n);
+      index += by;
     }
   }
 
@@ -687,12 +687,38 @@ struct sd_f<true> {
 
 }  // end namespace RcppRoll
 
-// Begin auto-generated exports (internal/make_exports.R)
+// [[Rcpp::export]]
+NumericVector na_locf(NumericVector x)
+{
+  NumericVector output = Rcpp::clone(x);
 
-// [[Rcpp::export(.RcppRoll_mean)]]
-SEXP roll_mean(SEXP x, int n, NumericVector weights,
-  int by, NumericVector fill_, bool partial, String align, bool normalize, bool na_rm) {
+  double lastNonNA = NA_REAL;
+  int n = x.size();
 
+  for (int i = 0; i < n; ++i)
+  {
+    double value = output[i];
+    if (!ISNAN(value))
+      lastNonNA = value;
+    else
+      output[i] = lastNonNA;
+  }
+  return output;
+}
+
+// Begin auto-generated exports (internal/make-exports.R)
+
+// [[Rcpp::export]]
+SEXP roll_mean_impl(SEXP x,
+             int n,
+             NumericVector weights,
+             int by,
+             NumericVector fill_,
+             bool partial,
+             String align,
+             bool normalize,
+             bool na_rm)
+{
   RcppRoll::Fill fill(fill_);
   if (Rf_isMatrix(x)) {
     if (na_rm) {
@@ -711,13 +737,18 @@ SEXP roll_mean(SEXP x, int n, NumericVector weights,
         RcppRoll::mean_f<false>(), NumericVector(x), n, weights, by, fill, partial, align, normalize);
     }
   }
-
 }
-
-// [[Rcpp::export(.RcppRoll_median)]]
-SEXP roll_median(SEXP x, int n, NumericVector weights,
-  int by, NumericVector fill_, bool partial, String align, bool normalize, bool na_rm) {
-
+// [[Rcpp::export]]
+SEXP roll_median_impl(SEXP x,
+             int n,
+             NumericVector weights,
+             int by,
+             NumericVector fill_,
+             bool partial,
+             String align,
+             bool normalize,
+             bool na_rm)
+{
   RcppRoll::Fill fill(fill_);
   if (Rf_isMatrix(x)) {
     if (na_rm) {
@@ -736,13 +767,18 @@ SEXP roll_median(SEXP x, int n, NumericVector weights,
         RcppRoll::median_f<false>(), NumericVector(x), n, weights, by, fill, partial, align, normalize);
     }
   }
-
 }
-
-// [[Rcpp::export(.RcppRoll_min)]]
-SEXP roll_min(SEXP x, int n, NumericVector weights,
-  int by, NumericVector fill_, bool partial, String align, bool normalize, bool na_rm) {
-
+// [[Rcpp::export]]
+SEXP roll_min_impl(SEXP x,
+             int n,
+             NumericVector weights,
+             int by,
+             NumericVector fill_,
+             bool partial,
+             String align,
+             bool normalize,
+             bool na_rm)
+{
   RcppRoll::Fill fill(fill_);
   if (Rf_isMatrix(x)) {
     if (na_rm) {
@@ -761,13 +797,18 @@ SEXP roll_min(SEXP x, int n, NumericVector weights,
         RcppRoll::min_f<false>(), NumericVector(x), n, weights, by, fill, partial, align, normalize);
     }
   }
-
 }
-
-// [[Rcpp::export(.RcppRoll_max)]]
-SEXP roll_max(SEXP x, int n, NumericVector weights,
-  int by, NumericVector fill_, bool partial, String align, bool normalize, bool na_rm) {
-
+// [[Rcpp::export]]
+SEXP roll_max_impl(SEXP x,
+             int n,
+             NumericVector weights,
+             int by,
+             NumericVector fill_,
+             bool partial,
+             String align,
+             bool normalize,
+             bool na_rm)
+{
   RcppRoll::Fill fill(fill_);
   if (Rf_isMatrix(x)) {
     if (na_rm) {
@@ -786,13 +827,18 @@ SEXP roll_max(SEXP x, int n, NumericVector weights,
         RcppRoll::max_f<false>(), NumericVector(x), n, weights, by, fill, partial, align, normalize);
     }
   }
-
 }
-
-// [[Rcpp::export(.RcppRoll_prod)]]
-SEXP roll_prod(SEXP x, int n, NumericVector weights,
-  int by, NumericVector fill_, bool partial, String align, bool normalize, bool na_rm) {
-
+// [[Rcpp::export]]
+SEXP roll_prod_impl(SEXP x,
+             int n,
+             NumericVector weights,
+             int by,
+             NumericVector fill_,
+             bool partial,
+             String align,
+             bool normalize,
+             bool na_rm)
+{
   RcppRoll::Fill fill(fill_);
   if (Rf_isMatrix(x)) {
     if (na_rm) {
@@ -811,13 +857,18 @@ SEXP roll_prod(SEXP x, int n, NumericVector weights,
         RcppRoll::prod_f<false>(), NumericVector(x), n, weights, by, fill, partial, align, normalize);
     }
   }
-
 }
-
-// [[Rcpp::export(.RcppRoll_sum)]]
-SEXP roll_sum(SEXP x, int n, NumericVector weights,
-  int by, NumericVector fill_, bool partial, String align, bool normalize, bool na_rm) {
-
+// [[Rcpp::export]]
+SEXP roll_sum_impl(SEXP x,
+             int n,
+             NumericVector weights,
+             int by,
+             NumericVector fill_,
+             bool partial,
+             String align,
+             bool normalize,
+             bool na_rm)
+{
   RcppRoll::Fill fill(fill_);
   if (Rf_isMatrix(x)) {
     if (na_rm) {
@@ -836,13 +887,18 @@ SEXP roll_sum(SEXP x, int n, NumericVector weights,
         RcppRoll::sum_f<false>(), NumericVector(x), n, weights, by, fill, partial, align, normalize);
     }
   }
-
 }
-
-// [[Rcpp::export(.RcppRoll_sd)]]
-SEXP roll_sd(SEXP x, int n, NumericVector weights,
-  int by, NumericVector fill_, bool partial, String align, bool normalize, bool na_rm) {
-
+// [[Rcpp::export]]
+SEXP roll_sd_impl(SEXP x,
+             int n,
+             NumericVector weights,
+             int by,
+             NumericVector fill_,
+             bool partial,
+             String align,
+             bool normalize,
+             bool na_rm)
+{
   RcppRoll::Fill fill(fill_);
   if (Rf_isMatrix(x)) {
     if (na_rm) {
@@ -861,13 +917,18 @@ SEXP roll_sd(SEXP x, int n, NumericVector weights,
         RcppRoll::sd_f<false>(), NumericVector(x), n, weights, by, fill, partial, align, normalize);
     }
   }
-
 }
-
-// [[Rcpp::export(.RcppRoll_var)]]
-SEXP roll_var(SEXP x, int n, NumericVector weights,
-  int by, NumericVector fill_, bool partial, String align, bool normalize, bool na_rm) {
-
+// [[Rcpp::export]]
+SEXP roll_var_impl(SEXP x,
+             int n,
+             NumericVector weights,
+             int by,
+             NumericVector fill_,
+             bool partial,
+             String align,
+             bool normalize,
+             bool na_rm)
+{
   RcppRoll::Fill fill(fill_);
   if (Rf_isMatrix(x)) {
     if (na_rm) {
@@ -886,7 +947,5 @@ SEXP roll_var(SEXP x, int n, NumericVector weights,
         RcppRoll::var_f<false>(), NumericVector(x), n, weights, by, fill, partial, align, normalize);
     }
   }
-
 }
-
-// End auto-generated exports (internal/make_exports.R)
+// End auto-generated exports (internal/make-exports.R)
