@@ -1,8 +1,8 @@
 Package: RcppRoll
 Type: Package
 Title: Efficient Rolling / Windowed Operations
-Version: 0.3.1
-Author: Kevin Ushey
+Version: 0.3.2
+Authors@R: person("Kevin", "Ushey", role = c("aut", "cre"), email = "kevinushey@gmail.com")
 Maintainer: Kevin Ushey <kevinushey@gmail.com>
 Description: Provides fast and efficient routines for
     common rolling / windowed operations. Routines for the
@@ -16,6 +16,7 @@ Imports: Rcpp
 LinkingTo: Rcpp
 RoxygenNote: 6.0.1
 NeedsCompilation: yes
-Packaged: 2024-07-07 10:09:06 UTC; kevin
+Packaged: 2026-03-27 21:29:41 UTC; kevin
+Author: Kevin Ushey [aut, cre]
 Repository: CRAN
-Date/Publication: 2024-07-07 11:10:02 UTC
+Date/Publication: 2026-03-28 06:11:35 UTC
