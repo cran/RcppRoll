@@ -1,22 +1,25 @@
 Package: RcppRoll
 Type: Package
 Title: Efficient Rolling / Windowed Operations
-Version: 0.3.2
-Authors@R: person("Kevin", "Ushey", role = c("aut", "cre"), email = "kevinushey@gmail.com")
-Maintainer: Kevin Ushey <kevinushey@gmail.com>
+Version: 0.4.0
+Authors@R: person("Kevin", "Ushey", role = c("aut", "cre"),
+    email = "kevinushey@gmail.com")
 Description: Provides fast and efficient routines for
     common rolling / windowed operations. Routines for the
     efficient computation of windowed mean, median,
     sum, product, minimum, maximum, standard deviation
     and variance are provided.
 License: GPL (>= 2)
+URL: https://kevinushey.github.io/RcppRoll/,
+        https://github.com/kevinushey/RcppRoll
+BugReports: https://github.com/kevinushey/RcppRoll/issues
 Depends: R (>= 2.15.1)
 Suggests: zoo, testthat
-Imports: Rcpp
-LinkingTo: Rcpp
-RoxygenNote: 6.0.1
+Encoding: UTF-8
+RoxygenNote: 7.3.3
 NeedsCompilation: yes
-Packaged: 2026-03-27 21:29:41 UTC; kevin
+Packaged: 2026-09-04 20:53:14 UTC; kevin
 Author: Kevin Ushey [aut, cre]
+Maintainer: Kevin Ushey <kevinushey@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-03-28 06:11:35 UTC
+Date/Publication: 2026-09-06 07:50:08 UTC
